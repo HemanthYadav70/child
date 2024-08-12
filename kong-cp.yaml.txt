@@ -1,0 +1,123 @@
+ingressController:
+ enabled: false
+
+image:
+ repository: danmjfgwnxx0001.bankofbaroda.co.in:9443/kong/kong-gateway
+ tag: "3.4.3.11-rhel"
+# Mount the secret created earlier
+secretVolumes:
+ - kong-cluster-cert
+ - edb-ssl
+
+env:
+ # This is a control_plane node
+ role: control_plane
+   #admin_api_uri: "https://172.16.138.204:9001"
+ admin_api_uri: "https://172.16.138.204:9001"
+ admin_uri: "https://172.16.138.203:9002"
+ portal_api_uri: https://172.16.138.205:9004
+ portal_gui_uri: https://172.16.138.205:9003
+ portal_gui_host: 172.16.138.205:9003
+ portal_gui_protocol: https
+ admin_gui_session_conf: '{"secret": "kong123", "storage": "kong","cookie_secure":true}'
+ #KONG_PORTAL_GUI_HOST: "172.16.138.205:9003"
+ # These certificates are used for control plane / data plane communication
+ cluster_cert: /etc/secrets/kong-cluster-cert/tls.crt
+ cluster_cert_key: /etc/secrets/kong-cluster-cert/tls.key
+ portal_gui_ssl_cert: /etc/secrets/kong-cluster-cert/tls.crt
+ portal_gui_ssl_cert_key: /etc/secrets/kong-cluster-cert/tls.key
+   #KONG_ADMIN_URL: http://kong-cp-kong-admin.kong-cp.svc.cluster.local:9001
+
+   # pg_ssl_cert: /etc/secrets/edb-ssl/ssl.crt
+   # pg_ssl_cert_key: /etc/secrets/edb-ssl/server.key
+   # pg_ssl_ca_cert: /etc/secrets/edb-ssl/ca.crt
+   # lua_ssl_trusted_certificate: /etc/secrets/edb-ssl/ca.crt
+ # Database
+ # CHANGE THESE VALUES
+ database: postgres
+ pg_database: kong
+ pg_user: kong
+ pg_password:
+   valueFrom:
+     secretKeyRef:
+       name: kong-db-password
+       key: password
+ pg_host: 172.16.91.150
+ pg_port: 6432
+   # pg_ssl: "off"
+ pg_connect_timeout: 120
+ pg_ssl_verify: "on"
+ pg_ssl_required: "on"
+ pg_ssl_version: tlsv1_3
+ pg_ssl_cert: /etc/secrets/edb-ssl/ssl.crt
+ pg_ssl_cert_key: /etc/secrets/edb-ssl/server.key
+ pg_ssl_ca_cert: /etc/secrets/edb-ssl/ca.crt
+   # lua_ssl_trusted_certificate: /etc/secrets/edb-ssl/ca.crt
+   #lua_ssl_verify_depth: 1
+
+   # pg_ssl: "off"
+ # Kong Manager password
+ password:
+   valueFrom:
+     secretKeyRef:
+       name: kong-db-password
+       key: kmg-password
+
+
+# Enterprise functionality
+enterprise:
+  enabled: true
+  license_secret: kong-enterprise-license
+  vitals:
+    enabled: true
+  rbac:
+    enabled: true
+    admin_gui_auth: basic-auth
+
+# The control plane serves the Admin API
+admin:
+  enabled: true
+  type: LoadBalancer
+  annotations:
+    cis.f5.com/ipamLabel: dmzuatipam
+  tls:
+    enabled: true
+    servicePort: 9001
+    containerPort: 9001
+
+
+
+# Clustering endpoints are required in hybrid mode
+cluster:
+ enabled: true
+ tls:
+   enabled: true
+
+clustertelemetry:
+ enabled: true
+ tls:
+   enabled: true
+
+# Optional features
+manager:
+  enabled: true
+  type: LoadBalancer
+  annotations:
+    cis.f5.com/ipamLabel: dmzuatipam
+  tls:
+    enabled:  true
+    servicePort: 9002
+    containerPort: 9002
+
+
+
+
+portal:
+ enabled: false
+
+portalapi:
+ enabled: false
+
+# These roles will be served by different Helm releases
+proxy:
+ enabled: false
